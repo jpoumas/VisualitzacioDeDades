@@ -1,0 +1,118 @@
+---
+title: "VISUALITZACIÓ DE DADES - PAC 2"
+author: "Josep Pou Mas"
+date: '`r format(Sys.Date(),"%e de %B, %Y")`'
+output:
+  html_document: default
+  pdf_document: default
+code_folding: hide  
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## 1. PIE CHART
+```{r, warning=FALSE, message=FALSE, out.width = "100%"}
+library(readxl)
+library(lessR)
+
+## Llegim el fitxer Excel que conté les dades
+Turistes2019 <- read_excel("C:/Users/Josep/Desktop/Turistes2019.xlsx", col_names = FALSE)
+
+## Guarden dades a un data frame i ordenen per num turistes descendentment
+turistes <- data.frame(Turistes2019)
+
+turistes_ord <- turistes[order(turistes$...2,decreasing=TRUE),]
+
+TotalRestaCCAA <- sum(turistes_ord[6:17,2])
+df_nova_fila <- data.frame("Resta de CC.AA.",TotalRestaCCAA)
+names(df_nova_fila) <- c("...1","...2") 
+df_turistes <- rbind(turistes,df_nova_fila) 
+df_turistes_final <- head(df_turistes[order(df_turistes$...2, decreasing = TRUE),],7)
+etiquetes <- c(df_turistes_final[,1])
+dades <- c(df_turistes_final[,2])
+
+pct <- round(dades/sum(dades)*100,1)
+lbls <- paste(pct)
+lbls <- paste(lbls,"%",sep="")
+
+pie(dades, lbls,
+    col=rainbow(length(etiquetes)), clockwise = TRUE,
+    main="Turistes rebuts en percentatge per CC.AA. (2019)")
+
+legend("topright", etiquetes, cex = 0.6,
+       fill = rainbow(length(dades)))
+```
+
+## 2. STREAM GRAPH
+```{r, warning=FALSE, message=FALSE, out.width = "100%"}
+library("dplyr")
+library("ggstream")
+library("ggplot2")
+library("plotly")
+
+## Llegim el fitxer Excel que conté les dades
+df_aire <- read.csv("C:/Users/Josep/Desktop/QualitatAireGirona2021_2022.csv", sep=",", stringsAsFactors = TRUE)
+
+## Comprovem dades
+# dim(df_aire)
+# str(df_aire)
+# levels(df_aire$CONTAMINANT)
+
+## Formategem la data per poder fer el filtre de les dades
+data_form <- factor(df_aire$DATA)
+df_aire$DATA <-as.Date(data_form, format = "%d/%m/%Y")
+
+## Creem dataset amb les dades diaries del març 2022 per fer el stream graph
+df_aire_marc2022 <- df_aire %>% filter(between(df_aire$DATA, as.Date("2022/03/01"), as.Date("2022/03/31")))
+df_aire_marc2022 <- df_aire_marc2022[order(df_aire_marc2022$DATA, decreasing=TRUE),]
+
+## Creen el stream graph
+p <-  ggplot(df_aire_marc2022, aes(x = DATA, y = X24h, fill = CONTAMINANT, 
+                                   text = paste("Data: ", DATA,"<br>Valor (µg/m3): ", X24h,
+                                  "<br>Contaminant: ", CONTAMINANT))) +
+      geom_stream(extra_span = 0.1, true_range = "none",type = "ridge", alpha = 0.9) +
+      guides(fill = guide_legend(title = "Contaminant")) +
+      labs(title="Qualitat de l'aire a Girona (Març 2022)",
+           subtitle ="Font: http://governobert.gencat.cat/ca/dades_obertes",
+           y="Valor (µg/m3)",
+           x="Data (dies)")
+
+ggplotly(p, tooltip = "text") %>% config(displayModeBar = "static", displaylogo = FALSE, modeBarButtonsToRemove = list("sendDataToCloud", "toImage", "autoScale2d", "resetScale2d", "hoverClosestCartesian", "hoverCompareCartesian", "select2d", "lasso2d", "zoomIn2d", "zoomOut2d", "toggleSpikelines")) 
+```
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+## 3. HORIZON GRAPH
+```{r, warning=FALSE, message=FALSE, out.width = "100%"}
+library(latticeExtra)
+
+covid2021 <- read_excel("C:/Users/Josep/Desktop/DefuncionsCovidEuropa2021.xlsx", col_names = TRUE)
+
+mat_covid <- ts(as.matrix(covid2021))
+dax_ts <- ts(mat_covid[,1])
+
+infolayers <-
+  layer(panel.scaleArrow(x = 0.99, digits = 1, col = "grey",
+                         srt = 90, cex = 0.7)) +
+  layer(lim <- current.panel.limits(),
+        panel.text(lim$x[1], lim$y[1], round(lim$y[1],1), font = 2,
+                   cex = 0.7, adj = c(-0.5,-0.5), col = "#9FC8DC"))
+
+## Horizon chart
+horizonplot(mat_covid, 
+            colorkey = TRUE, 
+            col.regions = c("#B41414","#E03231","#F7A99C","#9FC8DC","#468CC8","#0165B3"),
+            main = "Defuncions COVID19 Europa (2021)") + infolayers
+
+
+```
+
+
+
+
+
+
+
+
+
